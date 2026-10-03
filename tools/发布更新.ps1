@@ -9,10 +9,14 @@ $site  = "https://$login.github.io/$repo/"
 
 if(-not (Test-Path $gh)){ Write-Host "找不到 gh.exe（$gh），请先重新下载 GitHub CLI" -ForegroundColor Red; exit 1 }
 
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+
 Write-Host "[1/3] 提交本地改动..." -ForegroundColor Cyan
 git -C $root add -A
-$msg = "更新游戏内容 " + (Get-Date -Format 'yyyy-MM-dd HH:mm')
-git -C $root commit -m $msg 2>$null
+$msgFile = Join-Path $env:TEMP 'coe_commit_msg.txt'
+[System.IO.File]::WriteAllText($msgFile, "更新游戏内容 " + (Get-Date -Format 'yyyy-MM-dd HH:mm') + "`n", [System.Text.UTF8Encoding]::new($false))
+git -C $root -c i18n.commitEncoding=utf-8 commit -F $msgFile 2>$null
 if($LASTEXITCODE -ne 0){ Write-Host "（没有新改动，直接重新推送）" -ForegroundColor DarkGray }
 
 Write-Host "[2/3] 推送到 GitHub..." -ForegroundColor Cyan
