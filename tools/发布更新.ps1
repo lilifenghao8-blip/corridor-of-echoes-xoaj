@@ -1,4 +1,4 @@
-# 一键把游戏更新到线上（GitHub Pages）
+﻿# 一键把游戏更新到线上（GitHub Pages）
 # 用法：在项目目录执行  powershell -ExecutionPolicy Bypass -File tools\发布更新.ps1
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -8,9 +8,6 @@ $repo  = 'corridor-of-echoes-xoaj'
 $site  = "https://$login.github.io/$repo/"
 
 if(-not (Test-Path $gh)){ Write-Host "找不到 gh.exe（$gh），请先重新下载 GitHub CLI" -ForegroundColor Red; exit 1 }
-
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
 Write-Host "[1/3] 提交本地改动..." -ForegroundColor Cyan
 git -C $root add -A
