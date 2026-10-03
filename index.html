@@ -112,17 +112,17 @@
   }
   @keyframes breathe{0%,100%{opacity:.55;transform:scale(1);}50%{opacity:.9;transform:scale(1.05);}}
   .pill{display:inline-block;font-size:10px;border:1px solid #3a424c;border-radius:20px;padding:3px 10px;color:#8d959e;margin-top:10px;letter-spacing:2px;}
-  #rotate{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;
-    background:radial-gradient(ellipse at center,#0b0d12 0%,#000 74%);text-align:center;padding:22px;}
+  /* 强制横屏：竖屏时整块游戏旋转 90°，画布按横屏尺寸渲染 */
+  #game.rot90{inset:auto;left:50%;top:50%;width:100vh;height:100vw;
+    transform:translate(-50%,-50%) rotate(90deg);transform-origin:center center;}
+  #rotate{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);
+    z-index:45;display:none;align-items:center;gap:9px;padding:6px 14px;border-radius:20px;
+    background:rgba(8,18,32,.75);border:1px solid rgba(140,190,255,.45);color:#cfe4ff;
+    font-size:12px;letter-spacing:1px;white-space:nowrap;box-shadow:0 0 18px rgba(0,0,0,.65);}
   #rotate.on{display:flex;}
-  #rotate .phone{width:72px;height:130px;border:2px solid #6d7885;border-radius:14px;margin-bottom:20px;
-    box-shadow:0 0 26px rgba(140,180,230,.22),0 0 0 6px rgba(255,255,255,.02) inset;
-    animation:rot 2.4s ease-in-out infinite;}
-  @keyframes rot{0%,16%{transform:rotate(0deg);}46%,64%{transform:rotate(-90deg);}100%{transform:rotate(0deg);}}
-  #rotate h3{font-size:15px;letter-spacing:6px;color:#e2e9f1;font-weight:400;}
-  #rotate p{font-size:11px;color:#8b949e;margin-top:12px;line-height:2;letter-spacing:1px;}
-  #rotate button{margin-top:18px;border:1px solid #414a55;background:rgba(20,24,30,.8);color:#b9c2cc;
-    padding:11px 26px;border-radius:9px;font-size:12px;letter-spacing:3px;}
+  #rotate .phone{width:13px;height:23px;border:1.5px solid #8fb6e6;border-radius:3px;
+    animation:rot 2.6s ease-in-out infinite;}
+  @keyframes rot{0%,18%{transform:rotate(0deg);}50%,68%{transform:rotate(90deg);}100%{transform:rotate(0deg);}}
   @media (orientation:landscape) and (max-height:600px){
     .screen{padding:10px;justify-content:flex-start;}
     .screen h1{font-size:clamp(19px,5.2vw,32px);letter-spacing:4px;}
@@ -284,9 +284,7 @@
 
   <div id="rotate">
     <div class="phone"></div>
-    <h3>请 把 手 机 横 过 来</h3>
-    <p>本作改为横屏游玩，视野更宽、更适合被追。<br>（也可以直接按「继续」用竖屏玩）</p>
-    <button id="btnRotateOk">继 续（不旋转）</button>
+    <span>请把手机横过来 · 画面已强制横屏</span>
   </div>
 
   <div id="loading">正在生成走廊…</div>
@@ -1030,7 +1028,7 @@ const G={
   px:1.5, py:1.5, yaw:0, pitch:0,
   bat:100, light:true, stam:100, sprint:false,
   items:[], keys:0, doorOpen:false, exit:{x:1,y:1},
-  fear:0, shake:0, shakeMag:0, flickT:0, flick:1, hear:true, hearInfo:null, protect:0, protBeep:99,
+  fear:0, shake:0, shakeMag:0, flickT:0, flick:1, hear:true, hearInfo:null, protect:0, protBeep:99, rot90:false,
   time:0, elapsed:0, scareTimer:30, hbTimer:0, hbRate:1.1,
   bob:0, bobPhase:0, stepDist:0, dist:0,
   peek:0, peekX:0, peekY:0, flashT:0, faceT:0, subT:0, toastT:0, hintT:0,
@@ -1065,12 +1063,19 @@ function moveVec(){
 
 function initInput(){
   const look=$('btnLook'), joy=$('joy'), knob=$('joyknob');
-  function pos(e){ return {x:e.clientX, y:e.clientY}; }
-  function isLeft(p){ return p.x < window.innerWidth*0.47; }
+  function pos(e){
+    if(G.rot90){
+      // 画面顺时针旋转 90°，屏幕坐标 → 游戏坐标
+      return {x:e.clientY, y:window.innerWidth-e.clientX, W:window.innerHeight, H:window.innerWidth};
+    }
+    return {x:e.clientX, y:e.clientY, W:window.innerWidth, H:window.innerHeight};
+  }
+  function isLeft(p){ return p.x < p.W*0.47; }
   function setJoyVis(v){ joy.style.opacity=v?1:0; }
   function setKnob(dx,dy){ knob.style.transform='translate('+dx+'px,'+dy+'px)'; }
 
   look.addEventListener('pointerdown',e=>{
+    if(isCoarse()) tryLockLandscape();
     if(!G.running||G.paused) { return; }
     look.setPointerCapture&&look.setPointerCapture(e.pointerId);
     const p=pos(e);
@@ -1576,8 +1581,14 @@ function buildTexIndices(){
   }
 }
 
+function gameSize(){
+  const portrait=window.innerHeight>window.innerWidth;
+  if(G.rot90&&portrait) return {w:Math.max(1,window.innerHeight),h:Math.max(1,window.innerWidth)};
+  return {w:Math.max(1,window.innerWidth),h:Math.max(1,window.innerHeight)};
+}
 function resize(){
-  const w=Math.max(1,window.innerWidth), h=Math.max(1,window.innerHeight);
+  const gs=gameSize();
+  const w=gs.w, h=gs.h;
   view.width=w; view.height=h;
   view.style.width=w+'px'; view.style.height=h+'px';
   const ar=h/w;
@@ -2003,14 +2014,9 @@ function startGame(){
   goFullscreen();
 }
 let rotDismissed=false;
-function isPortrait(){ return window.innerHeight>window.innerWidth; }
-function updateOrientation(){
-  let coarse=false;
-  try{ coarse=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches); }catch(e){}
-  const show=!!(G.started&&!rotDismissed&&coarse&&isPortrait()&&!G.over);
-  G.rotPause=show;
-  const el=$('rotate');
-  if(el) el.classList.toggle('on',show);
+let lockTry=0;
+function isCoarse(){
+  try{ return !!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches); }catch(e){ return false; }
 }
 function lockLandscape(){
   try{
@@ -2020,11 +2026,11 @@ function lockLandscape(){
     }
   }catch(e){}
 }
-function goFullscreen(){
+function tryLockLandscape(){
+  const now=Date.now();
+  if(now-lockTry<2500) return;
+  lockTry=now;
   try{
-    let coarse=false;
-    try{ coarse=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches); }catch(e){}
-    if(!coarse) return;
     const el=document.documentElement;
     if(el.requestFullscreen&&!document.fullscreenElement){
       const p=el.requestFullscreen();
@@ -2032,6 +2038,22 @@ function goFullscreen(){
       else lockLandscape();
     } else lockLandscape();
   }catch(e){}
+}
+function goFullscreen(){ tryLockLandscape(); }
+/* 强制横屏：能锁定就锁定；锁不了（如 iPhone）就把整块画面旋转 90°，永远按横屏渲染 */
+function updateOrientation(){
+  const coarse=isCoarse();
+  const portrait=window.innerHeight>window.innerWidth;
+  const needRot=coarse&&portrait;
+  const changed=(!!G.rot90)!==needRot;
+  G.rot90=needRot;
+  const g=document.getElementById('game');
+  if(g) g.classList.toggle('rot90',needRot);
+  const hint=document.getElementById('rotate');
+  if(hint) hint.classList.toggle('on',needRot&&G.started&&!G.over);
+  if(changed) resize();
+  if(coarse&&portrait) tryLockLandscape();
+  return needRot;
 }
 function togglePause(force){
   if(!G.running||G.over) return;
@@ -2126,7 +2148,6 @@ function wireUI(){
   $('btnResume').addEventListener('click',()=>togglePause(false));
   $('btnQuit').addEventListener('click',backToMenu);
   $('btnDeadMenu').addEventListener('click',backToMenu);
-  $('btnRotateOk').addEventListener('click',function(){ rotDismissed=true; updateOrientation(); });
   $('btnWinMenu').addEventListener('click',backToMenu);
   window.addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!G.started) startGame();
@@ -2169,7 +2190,10 @@ function init(){
     $('btnStart').style.opacity=1;
   });
   window.addEventListener('resize',function(){ clearTimeout(window.__rz); window.__rz=setTimeout(resize,120); updateOrientation(); });
-  window.addEventListener('orientationchange',function(){ setTimeout(function(){ resize(); updateOrientation(); },220); });
+  window.addEventListener('orientationchange',function(){ setTimeout(function(){ updateOrientation(); resize(); },220); });
+  document.addEventListener('fullscreenchange',function(){ setTimeout(function(){ lockLandscape(); updateOrientation(); resize(); },260); });
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) setTimeout(function(){ lockLandscape(); updateOrientation(); },200); });
+  document.addEventListener('pointerdown',function(){ if(G.started&&!G.over) tryLockLandscape(); },{passive:true});
   if(window.visualViewport) window.visualViewport.addEventListener('resize',function(){ clearTimeout(window.__rz2); window.__rz2=setTimeout(resize,120); });
   requestAnimationFrame(frame);
 }
