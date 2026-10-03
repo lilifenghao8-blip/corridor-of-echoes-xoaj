@@ -112,19 +112,15 @@
   }
   @keyframes breathe{0%,100%{opacity:.55;transform:scale(1);}50%{opacity:.9;transform:scale(1.05);}}
   .pill{display:inline-block;font-size:10px;border:1px solid #3a424c;border-radius:20px;padding:3px 10px;color:#8d959e;margin-top:10px;letter-spacing:2px;}
-  /* 严格横屏：竖屏直接拦截（不旋转画面），转到横屏才继续 */
-  #rotate{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;
-    background:radial-gradient(ellipse at center,#0b0d12 0%,#000 76%);text-align:center;padding:22px;}
+  /* 竖屏不再拦截、也不旋转画面：只给一个不挡操作的横屏提示条 */
+  #rotate{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 112px);transform:translateX(-50%);
+    z-index:8;display:none;align-items:center;gap:9px;padding:6px 8px 6px 13px;border-radius:22px;
+    background:rgba(8,18,32,.72);border:1px solid rgba(140,190,255,.40);color:#cfe4ff;
+    font-size:11px;letter-spacing:1px;white-space:nowrap;box-shadow:0 0 16px rgba(0,0,0,.6);}
   #rotate.on{display:flex;}
-  #rotate .phone{width:64px;height:116px;border:2px solid #6d7885;border-radius:13px;margin-bottom:22px;
-    box-shadow:0 0 26px rgba(140,180,230,.25),0 0 0 6px rgba(255,255,255,.02) inset;
-    animation:rot 2.4s ease-in-out infinite;}
-  @keyframes rot{0%,16%{transform:rotate(0deg);}46%,64%{transform:rotate(-90deg);}100%{transform:rotate(0deg);}}
-  #rotate h3{font-size:15px;letter-spacing:6px;color:#e2e9f1;font-weight:400;}
-  #rotate p{font-size:11px;color:#8b949e;margin-top:12px;line-height:2;letter-spacing:1px;}
-  #rotate button{margin-top:18px;border:1px solid #414a55;background:rgba(20,24,30,.85);color:#c9d3dd;
-    padding:11px 24px;border-radius:9px;font-size:12px;letter-spacing:2px;}
-  #rotate button:active{background:#2b3440;}
+  #rotate button{pointer-events:auto;border:1px solid rgba(150,200,255,.55);background:rgba(40,80,130,.65);
+    color:#e6f1ff;padding:5px 11px;border-radius:16px;font-size:11px;letter-spacing:1px;}
+  #rotate button:active{background:rgba(70,120,180,.8);}
   @media (orientation:landscape) and (max-height:600px){
     .screen{padding:10px;justify-content:flex-start;}
     .screen h1{font-size:clamp(19px,5.2vw,32px);letter-spacing:4px;}
@@ -285,10 +281,8 @@
   </div>
 
   <div id="rotate">
-    <div class="phone"></div>
-    <h3>请 把 手 机 横 过 来</h3>
-    <p>本作<strong>仅支持横屏</strong>，竖屏无法游玩。<br>若手机开着「竖屏锁定」，请先关掉再进游戏。</p>
-    <button id="btnRetryRot">我已横过来 · 重试</button>
+    <span>竖屏也能玩 · 横屏视野更好</span>
+    <button id="btnGoLandscape">切到横屏</button>
   </div>
 
   <div id="loading">正在生成走廊…</div>
@@ -2048,16 +2042,16 @@ function goFullscreen(){ tryLockLandscape(); }
 function updateOrientation(){
   const coarse=isCoarse();
   const portrait=window.innerHeight>window.innerWidth;
-  const block=coarse&&portrait;
-  // 严格横屏：不做画面旋转，竖屏就直接拦截 + 暂停
+  // 绝不冻结游戏、也绝不旋转画面：竖屏就是正常竖屏玩（保证任何手机都能玩）
   G.rot90=false;
+  G.rotPause=false;
   const g=document.getElementById('game');
   if(g) g.classList.remove('rot90');
-  G.rotPause=block&&G.started&&!G.over;
-  const ov=document.getElementById('rotate');
-  if(ov) ov.classList.toggle('on',G.rotPause);
-  if(block&&coarse) tryLockLandscape();
-  return block;
+  const bar=document.getElementById('rotate');
+  if(bar) bar.classList.toggle('on',coarse&&portrait&&G.started&&!G.over);
+  // 顺手再试一次锁定横屏（能成功就自动变成真横屏）
+  if(coarse&&portrait) tryLockLandscape();
+  return portrait;
 }
 function togglePause(force){
   if(!G.running||G.over) return;
@@ -2198,7 +2192,7 @@ function init(){
   document.addEventListener('fullscreenchange',function(){ setTimeout(function(){ lockLandscape(); updateOrientation(); resize(); },260); });
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) setTimeout(function(){ lockLandscape(); updateOrientation(); },200); });
   document.addEventListener('pointerdown',function(){ if(G.started&&!G.over) tryLockLandscape(); },{passive:true});
-  var __rr=document.getElementById('btnRetryRot');
+  var __rr=document.getElementById('btnGoLandscape');
   if(__rr) __rr.addEventListener('click',function(){ lockTry=0; tryLockLandscape(); updateOrientation(); resize(); });
   if(window.visualViewport) window.visualViewport.addEventListener('resize',function(){ clearTimeout(window.__rz2); window.__rz2=setTimeout(resize,120); });
   requestAnimationFrame(frame);
